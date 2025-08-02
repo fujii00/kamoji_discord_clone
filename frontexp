@@ -1,0 +1,26 @@
+// // Connexion WebSocket
+// const socket = io('http://localhost:3000', {
+//   auth: { token: userToken }
+// });
+
+// // Écoute des nouveaux messages
+// useEffect(() => {
+//   socket.on('new_message', (message) => {
+//     if (message.sender.id === currentContact.id) {
+//       setMessages(prev => [...prev, message]);
+//     }
+//   });
+
+//   return () => {
+//     socket.off('new_message');
+//   };
+// }, [currentContact]);
+
+// // Envoi d'un message
+// const sendMessage = async () => {
+//   await axios.post('/api/messages/private', {
+//     content: newMessage,
+//     receiverId: currentContact.id
+//   });
+//   setNewMessage('');
+// };

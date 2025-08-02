@@ -1,0 +1,28 @@
+// import { Server } from "socket.io";
+
+// const io = new Server(server, {
+//   cors: {
+//     origin: "*"
+//   }
+// });
+
+// io.on('connection', (socket) => {
+//   console.log('Un utilisateur est connecté');
+  
+//   // Rejoindre la room de l'utilisateur
+//   socket.on('authenticate', (token) => {
+//     try {
+//       const decoded = verifyToken(token);
+//       socket.join(`user_${decoded.id}`);
+//     } catch (e) {
+//       socket.disconnect();
+//     }
+//   });
+
+//   socket.on('disconnect', () => {
+//     console.log('Utilisateur déconnecté');
+//   });
+// });
+
+// // Rend io accessible dans les contrôleurs
+// app.locals.io = io;
