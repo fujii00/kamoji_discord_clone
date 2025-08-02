@@ -52,6 +52,12 @@ export const userDefaultSchema = joi.object().keys(
     badge: Joi.string().allow(null, '').optional(),
     statut: Joi.string().valid('online', 'offline', 'invisible', 'idle').default('offline'),
     gender: Joi.string().valid('M', 'F', 'O').default('M'),
+   date_of_birth: Joi.date().required().max('now') .messages({
+        'date.base': 'Date of birth must be a valid date',
+        'date.format': 'Date of birth must be in a valid format',
+        'date.max': 'Date of birth cannot be in the future',
+        'any.required': 'Date of birth is required'
+    })
     }
 ).options({ stripUnknown: true })
 

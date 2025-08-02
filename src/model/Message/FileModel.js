@@ -5,7 +5,7 @@ import { DefaultModel } from "../DefaultModel.js";
 
 const FileModel = sequelize.define('FileModel', {
     ...DefaultModel,
-      filename: {
+    filename: {
             type: DataTypes.STRING,
             allowNull: false,
         },

@@ -80,7 +80,10 @@ const UserModel = sequelize.define('UserModel',{
         allowNull:false,
         defaultValue: ["ROLE_USER"]
     },
-
+    date_of_birth:{
+        type: DataTypes.DATE,
+        allowNull:false
+    }
 },{
        tableName: 'users',
        timestamps: false,
