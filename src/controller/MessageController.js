@@ -202,3 +202,97 @@ export async function getPrivateConversation(req, res) {
     return res.status(500).json({ error: "Erreur serveur" });
   }
 }
+
+// MessageController.js
+export async function sendChannelMessage(req, res) {
+    try {
+        const { content, channel_id } = req.body;
+        const sender_id = req.user.id;
+
+        // Vérifier que le canal existe et appartient à un serveur
+        const channel = await ChannelModel.findOne({
+            where: { id: channel_id },
+            include: [{
+                model: ServerModel,
+                required: true,
+                include: [{
+                    model: UserModel,
+                    as: 'server_members',
+                    where: { id: sender_id }
+                }]
+            }]
+        });
+
+        if (!channel) {
+            return res.status(403).json({ 
+                error: "Canal introuvable ou vous n'avez pas accès" 
+            });
+        }
+
+        // Créer le message
+        const message = await MessageModel.create({
+            content,
+            sender: sender_id,
+            channel: channel_id,
+            server: channel.server_id,
+            is_pinned: false
+        });
+
+        // Récupérer les détails complets pour l'émission
+        const fullMessage = await MessageModel.findByPk(message.id, {
+            include: [
+                { association: 'Sender', attributes: ['id', 'username'] },
+                { association: 'Channel', attributes: ['id', 'name'] }
+            ]
+        });
+
+        // Diffuser le message à tous les membres du serveur
+        req.app.locals.io.to(`server_${channel.server_id}`).emit('new_message', {
+            type: 'channel_message',
+            message: fullMessage
+        });
+
+        return res.status(201).json(fullMessage);
+    } catch (error) {
+        console.error("Erreur:", error);
+        return res.status(500).json({ error: "Erreur serveur" });
+    }
+}
+
+export async function getChannelMessages(req, res) {
+    try {
+        const { channel_id } = req.params;
+        const user_id = req.user.id;
+
+        // Vérifier l'accès au canal
+        const hasAccess = await ChannelModel.findOne({
+            where: { id: channel_id },
+            include: [{
+                model: ServerModel,
+                include: [{
+                    model: UserModel,
+                    as: 'server_members',
+                    where: { id: user_id }
+                }]
+            }]
+        });
+
+        if (!hasAccess) {
+            return res.status(403).json({ error: "Accès refusé" });
+        }
+
+        const messages = await MessageModel.findAll({
+            where: { channel: channel_id },
+            include: [
+                { association: 'Sender', attributes: ['id', 'username'] },
+                { association: 'Replies' }
+            ],
+            order: [['createdAt', 'ASC']]
+        });
+
+        return res.status(200).json(messages);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: "Erreur serveur" });
+    }
+}
