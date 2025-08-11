@@ -45,7 +45,7 @@ export const userDefaultSchema = joi.object().keys(
             otherwise: Joi.optional()
         }),
     contact: Joi.number().integer().allow(null),
-    avatar: Joi.string().allow(null, '').optional(),
+    avatar: Joi.number().integer().optional(),
     bio: Joi.string().allow(null, '').optional(),
     activity_box: Joi.string().allow(null, '').optional(),
     note_box: Joi.string().allow(null, '').optional(),
@@ -80,8 +80,8 @@ export const resetPasswordSchema = (length = 6) => {
 
 export const createUserSchema = joi.object().keys(
     {
-        firstname: Joi.string().min(3).required(),
-        lastname: Joi.string().min(3).required(),
+        Name: Joi.string().min(3).required(),
+        DisplayName: Joi.string().min(3).required(),
         email: Joi.string().email().required(),
         password: Joi.string().min(8).when('id', {
             is: Joi.exist(),

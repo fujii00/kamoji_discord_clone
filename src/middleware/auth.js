@@ -1,4 +1,4 @@
-import { verifyToken } from "../useful/jwt.js"
+import {verifyToken} from "../useful/jwt.js";
 
 function getRequestToken(req) {
     const authHeader = req.headers['authorization']
@@ -24,7 +24,7 @@ export async function authenticate(req, res, next)
         next()
     }
     catch (e) {
-        return res.status(401).json('invalid token')
+        return res.status(400).json('invalid token')
     }
 }
 
@@ -46,34 +46,24 @@ export function isGrantedAccess(roles)
 {
     return (req, res, next) => {
 
-        if (!req.user) return res.status(401).json('UnAuthorized')
+        const token = getRequestToken(req)
+
+        if (!token) return res.status(401).json('access denied')
+
+        try {
+            req.user = verifyToken(token)
+        }
+        catch (e) {
+            return res.status(400).json('invalid token')
+        }
 
         const userRoles = req.user.roles
 
         //const granted = userRoles.find(role => roles.find(r => r === role))
         const granted = roles.some(role => userRoles.includes(role))
 
-        console.log("userRoles", userRoles)
-        console.log("roles", roles, "granted", granted)
-
         if (!granted) return res.status(401).json('access denied')
 
         else next()
     }
-}
-
-export function authMiddleware(req, res, next) {
-
-    const token = getRequestToken(req)
-
-    if (token) {
-        try {
-            req.user = verifyToken(token)
-        }
-        catch (e) {
-            return res.status(401).json('invalid token')
-        }
-    }
-
-    next()
 }
