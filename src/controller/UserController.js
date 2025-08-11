@@ -1,8 +1,8 @@
 import UserModel from "../model/UserModel.js";
 import {generateVerificationCode} from "../useful/helpers.js";
-import paginate from "../useful/paginate.js";
 import {sendTemplateEmail} from "../useful/sendMail.js";
 
+import paginate from "../useful/paginate.js";
 
 export async function getUsers(req, res) {
   try {
