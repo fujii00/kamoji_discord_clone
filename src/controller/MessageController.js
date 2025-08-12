@@ -1,6 +1,7 @@
 import MessageModel from "../model/Message/MessageModel.js";
 import { Op } from "sequelize";
 import io from "../server/server.js";
+import UserModel from "../model/UserModel.js";
  // Assurez-vous que votre serveur WebSocket est correctement importé
 
 // Créer un message
@@ -147,21 +148,35 @@ export async function getMessageReplies(req, res) {
 export async function sendPrivateMessage(req, res) {
   try {
     const { content, receiverId } = req.body;
-    const senderId = req.user.id;
+    const senderId = req.user?.id;
+
+    if (!senderId) {
+      return res.status(401).json({ error: "Utilisateur non authentifié" });
+    }
 
     if (senderId === receiverId) {
       return res.status(400).json({ error: "Vous ne pouvez pas vous envoyer un message à vous-même" });
     }
 
+    if (!content || content.trim() === "") {
+      return res.status(400).json({ error: "Le message ne peut pas être vide" });
+    }
+
+    const receiver = await UserModel.findByPk(receiverId);
+    if (!receiver) {
+      return res.status(404).json({ error: "Destinataire introuvable" });
+    }
+
     const message = await MessageModel.create({
-      content,
+      content: content.trim(),
       sender: senderId,
       receiver: receiverId,
-      is_private: true // Ajoutez ce champ à votre modèle
+      is_private: true
     });
 
-    // Émettez l'événement en temps réel (WebSocket/Socket.IO)
-    io.to(`user_${receiverId}`).emit('new_message', message);
+    const io = req.app.locals.io;
+io.to(`user_${receiverId}`).emit('new_message', message);
+
 
     return res.status(201).json(message);
   } catch (error) {
@@ -170,35 +185,36 @@ export async function sendPrivateMessage(req, res) {
   }
 }
 
+
 // Récupérer la conversation entre deux utilisateurs
 export async function getPrivateConversation(req, res) {
   try {
-    const { userId } = req.params;
+    const { id: userId } = req.params; // récupère l'id du correspondant
     const currentUserId = req.user.id;
 
+    // Vérifier que userId et currentUserId existent (sécurité basique)
+    if (!userId || !currentUserId) {
+      return res.status(400).json({ error: "Paramètres invalides" });
+    }
+
+    // Récupérer la conversation entre les deux utilisateurs
     const messages = await MessageModel.findAll({
       where: {
         [Op.or]: [
-          {
-            sender: currentUserId,
-            receiver: userId
-          },
-          {
-            sender: userId,
-            receiver: currentUserId
-          }
+          { sender: currentUserId, receiver: userId },
+          { sender: userId, receiver: currentUserId }
         ]
       },
       order: [['createdAt', 'ASC']],
       include: [
-        { association: 'Sender', attributes: ['id', 'username'] },
-        { association: 'Receiver', attributes: ['id', 'username'] }
+        { model: UserModel, as: 'Sender', attributes: ['id', 'username'] },
+        { model: UserModel, as: 'Receiver', attributes: ['id', 'username'] },
       ]
     });
 
     return res.status(200).json(messages);
   } catch (error) {
-    console.error(error);
+    console.error('Erreur getPrivateConversation:', error);
     return res.status(500).json({ error: "Erreur serveur" });
   }
 }
