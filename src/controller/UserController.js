@@ -3,6 +3,7 @@ import {generateVerificationCode} from "../useful/helpers.js";
 import {sendTemplateEmail} from "../useful/sendMail.js";
 
 import paginate from "../useful/paginate.js";
+import FileModel from "../model/Message/FileModel.js";
 
 export async function getUsers(req, res) {
   try {
@@ -10,6 +11,17 @@ export async function getUsers(req, res) {
       page: parseInt(req.query.page) || 1,
       limit: parseInt(req.query.limit) || 10
     });
+    res.json(users);
+  } catch (e) {
+    res.status(500).json({
+      message: e.message ?? "Une erreur est survenue sur le serveur"
+    });
+  }
+}
+
+export async function getAllUsers(req, res) {
+  try {
+    const users = await UserModel.findAll(); // récupère tous les utilisateurs
     res.json(users);
   } catch (e) {
     res.status(500).json({
@@ -33,30 +45,45 @@ export async function getUsersWithPassword(req, res) {
 
 
 export async function postUser(req, res) {
-    try {
-        const {code, expiredAt} = await generateVerificationCode(6, 1000 * 5 * 60)
+    const { DisplayName, Name, email, phone, password, avatar, date_of_birth } = req.body;
 
-        const user =
-            await UserModel.create({...req.body, code, expiredAt})
+    try {
+        const { code, expiredAt } = await generateVerificationCode(6, 1000 * 5 * 60);
+
+        const user = await UserModel.create({
+            DisplayName,
+            Name,
+            email,
+            phone,
+            password,
+            code,
+            expiredAt,
+            avatar,
+            date_of_birth
+        });
+
+        // 🔹 Recharger avec l'association pour avoir file.url
+        const fullUser = await UserModel.findByPk(user.id, {
+            include: [{ model: FileModel, as: 'file' }]
+        });
 
         try {
             await sendTemplateEmail(
-                req.body.email,
+                email,
                 "Inscription Sur La Plateforme",
                 "welcome",
-                {username: `${req.body.Name} `, validatedCode: code}
-            )
+                { username: `${Name} ${DisplayName}`, validatedCode: code }
+            );
+        } catch (e) {
+            console.log(e.message, "as message");
         }
-        catch (e) {
 
-        }
-        res.status(201).json(user)
-    }
-    catch (e) {
-        res.status(500)
-            .json({message: e.message ?? "Une erreur est survenue sur le serveur"})
+        res.status(201).json(fullUser);
+    } catch (e) {
+        res.status(500).json({ message: e.message ?? "Une erreur est survenue sur le serveur" });
     }
 }
+
 
 
 export async function patchUser(req, res) {
@@ -145,7 +172,7 @@ export async function checkEmail(req, res) {
                 user.email,
                 "Activation du compte",
                 "congratulation",
-                {username: `${user.lastname} ${user.firstname}`}
+                {username: `${user.Name} ${user.DisplayName}`}
             )
         }
         catch (e) {

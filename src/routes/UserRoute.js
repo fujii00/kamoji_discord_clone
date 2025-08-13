@@ -8,7 +8,8 @@ import {
     getPeopleUser,
     getCurrentUser,
     checkEmail, resetPassword, confirmResetPassword,
-    checkCode
+    checkCode,
+    getAllUsers
 } from "../controller/UserController.js";
 import { isGrantedAccess } from "../middleware/auth.js";
 import { parseIdParam } from "../middleware/parseIdParam.js";
@@ -25,6 +26,7 @@ import {
 const UserRouter= express.Router();
 
 UserRouter.get("/", getUsers)
+UserRouter.get("/All",getAllUsers)
 UserRouter.get("/all", getUsersWithPassword)
 
 UserRouter.get("/me", isGrantedAccess([ROLES.USER]), getCurrentUser)

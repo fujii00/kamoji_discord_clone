@@ -1,11 +1,11 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../../../config/orm_config.js";
 import { DefaultModel } from "../DefaultModel.js";
-import UserModel from "../UserModel.js";
-import ChannelModel from "../Server/ChannelModel.js";
-import ServerModel from "../Server/ServerModel.js";
 
-// Définition du modèle sans les références circulaires immédiates
+import UserModel from "../UserModel.js";          // importer UserModel ici
+import ChannelModel from "../Server/ChannelModel.js";  // importer ChannelModel
+import ServerModel from "../Server/ServerModel.js";    // importer ServerModel
+
 const MessageModel = sequelize.define('MessageModel', {
     ...DefaultModel,
     content: {
@@ -70,7 +70,37 @@ const MessageModel = sequelize.define('MessageModel', {
     }
 });
 
-// Méthodes d'instance
+// Associations directement ici, après définition du modèle :
+MessageModel.belongsTo(UserModel, {
+    as: 'Sender',
+    foreignKey: 'sender'
+});
+
+MessageModel.belongsTo(UserModel, {
+    as: 'Receiver',
+    foreignKey: 'receiver'
+});
+
+MessageModel.belongsTo(ChannelModel, {
+    foreignKey: 'channel'
+});
+
+MessageModel.belongsTo(ServerModel, {
+    foreignKey: 'server'
+});
+
+// Auto-référence pour les réponses
+MessageModel.belongsTo(MessageModel, {
+    as: 'ParentMessage',
+    foreignKey: 'reply'
+});
+
+MessageModel.hasMany(MessageModel, {
+    as: 'Replies',
+    foreignKey: 'reply'
+});
+
+// Méthodes d'instance (tu peux laisser telles quelles)
 MessageModel.prototype.togglePin = function() {
     this.is_pinned = !this.is_pinned;
     return this.save();
@@ -81,37 +111,4 @@ MessageModel.prototype.updateContent = async function(newContent) {
     return await this.save();
 };
 
-// Fonction pour configurer les associations (à appeler après l'initialisation de tous les modèles)
-export function setupMessageAssociations(models) {
-    MessageModel.belongsTo(models.UserModel, {
-        as: 'Sender',
-        foreignKey: 'sender'
-    });
-    
-    MessageModel.belongsTo(models.UserModel, {
-        as: 'Receiver',
-        foreignKey: 'receiver'
-    });
-    
-    MessageModel.belongsTo(models.ChannelModel, {
-        foreignKey: 'channel'
-    });
-    
-    MessageModel.belongsTo(models.ServerModel, {
-        foreignKey: 'server'
-    });
-    
-    // Auto-référence pour les réponses
-    MessageModel.belongsTo(MessageModel, {
-        as: 'ParentMessage',
-        foreignKey: 'reply'
-    });
-    
-    MessageModel.hasMany(MessageModel, {
-        as: 'Replies',
-        foreignKey: 'reply'
-    });
-}
-
 export default MessageModel;
-
