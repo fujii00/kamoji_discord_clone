@@ -2,85 +2,98 @@ import MessageModel from "../model/Message/MessageModel.js";
 import UserModel from "../model/UserModel.js";
 import { Op } from "sequelize";
 
-// Créer un message privé (sender, receiver, content)
+// Créer un message privé
 export async function createPrivateMessage(req, res) {
   try {
-    const { receiver, content, reply } = req.body;
-    const sender = req.user.id; // Récupéré depuis le token
+    const { receiver, content } = req.body;
+    const sender = req.user.id;
 
-    // Vérification : champs requis
-    if (!receiver || !content) {
+    if (!receiver || !content?.trim())
       return res.status(400).json({ error: "receiver and content are required" });
-    }
 
-    // Vérification : pas d’auto-message
-    if (Number(receiver) === Number(sender)) {
-      return res.status(400).json({ error: "You cannot send a message to yourself" });
-    }
-    // Vérification : contenu non vide
-    if (!content || !content.trim()) {
-  return res.status(400).json({ error: "Message content cannot be empty" });
-}
+    if (receiver === sender)
+      return res.status(400).json({ error: "Cannot send message to self" });
 
-    // Vérification : receiver existe ?
     const receiverExists = await UserModel.findByPk(receiver);
-    if (!receiverExists) {
-      return res.status(404).json({ error: "Receiver not found" });
-    }
+    if (!receiverExists) return res.status(404).json({ error: "Receiver not found" });
 
-    // Création du message
-    const newMessage = await MessageModel.create({
-      sender,
-      receiver,
-      content,
-      reply: reply || null,
-      channel: null,
-      server: null,
+    // Créer le message
+    const newMessage = await MessageModel.create({ sender, receiver, content });
+
+    // Récupérer le message complet avec infos des utilisateurs
+    const fullMessage = await MessageModel.findByPk(newMessage.id, {
+      include: [
+        { model: UserModel, as: 'Sender', attributes: ['id', 'Name', 'DisplayName'] },
+        { model: UserModel, as: 'Receiver', attributes: ['id', 'Name', 'DisplayName'] }
+      ]
     });
 
-    res.status(201).json(newMessage);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const msgToSend = {
+      id: fullMessage.id,
+      sender: fullMessage.sender,
+      receiver: fullMessage.receiver,
+      content: fullMessage.content,
+      timestamp: fullMessage.createdAt,
+      senderDisplayName: fullMessage.Sender?.DisplayName,
+      receiverDisplayName: fullMessage.Receiver?.DisplayName
+    };
+
+    // Émettre via Socket.IO aux deux utilisateurs
+    req.app.locals.io.to(`user_${receiver}`).emit("privateMessage", msgToSend);
+    req.app.locals.io.to(`user_${sender}`).emit("privateMessage", msgToSend);
+
+    res.status(201).json(msgToSend);
+  } catch (err) {
+    console.error("Error creating private message:", err);
+    res.status(500).json({ error: err.message });
   }
 }
 
-
-// Récupérer les messages privés entre deux utilisateurs (idUser1 et idUser2)
+// Récupérer messages privés entre deux utilisateurs
 export async function getPrivateMessages(req, res) {
+  const { idUser1, idUser2 } = req.params;
   try {
-    const { idUser1, idUser2 } = req.params;
-
     const messages = await MessageModel.findAll({
-       where: {
-    [Op.or]: [
-      { sender: Number(idUser1), receiver: Number(idUser2) },
-      { sender: Number(idUser2), receiver: Number(idUser1) }
-    ]
-  },
-      include: [
-        { model: UserModel, as: 'Sender', attributes: ['id', 'Name', 'DisplayName'] },
-        { model: UserModel, as: 'Receiver', attributes: ['id', 'Name', 'DisplayName'] },
-      ],
+      where: {
+        [Op.or]: [
+          { sender: idUser1, receiver: idUser2 },
+          { sender: idUser2, receiver: idUser1 }
+        ]
+      },
       order: [['createdAt', 'ASC']]
     });
 
-    res.status(200).json(messages);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const formatted = await Promise.all(messages.map(async msg => {
+      const sender = await UserModel.findByPk(msg.sender, { attributes: ['DisplayName'] });
+      const receiver = await UserModel.findByPk(msg.receiver, { attributes: ['DisplayName'] });
+      return {
+        id: msg.id,
+        sender: msg.sender,
+        receiver: msg.receiver,
+        content: msg.content,
+        timestamp: msg.createdAt,
+        senderDisplayName: sender?.DisplayName,
+        receiverDisplayName: receiver?.DisplayName
+      };
+    }));
+
+    res.json(formatted);
+  } catch (err) {
+    console.error("Error fetching private messages:", err);
+    res.status(500).json({ error: err.message });
   }
 }
 
-// Supprimer un message privé par id
+// Supprimer un message privé
 export async function deletePrivateMessage(req, res) {
   try {
     const { id } = req.params;
     const message = await MessageModel.findByPk(id);
-    if (!message) {
-      return res.status(404).json({ error: "Message not found" });
-    }
+    if (!message) return res.status(404).json({ error: "Message not found" });
     await message.destroy();
     res.status(200).json({ message: "Message deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error("Error deleting private message:", err);
+    res.status(500).json({ error: err.message });
   }
 }

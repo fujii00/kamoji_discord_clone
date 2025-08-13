@@ -1,89 +1,65 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "path";
+import { createServer } from "http";
+import { Server } from "socket.io";
 import UserRouter from "../routes/UserRoute.js";
 import authRouter from "../routes/authRoute.js";
 import fileRoute from "../routes/FileRoute.js";
-import path from "node:path";
 import Messagerouter from "../routes/MessageRoute.js";
-import { Server } from "socket.io";
 import { verifyToken } from "../useful/jwt.js";
-import { createServer } from "node:http";
-
-const server = express();
-const httpServer = createServer(server); // Serveur HTTP créé
-
-const corsoptions = {
-  origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-};
-
-// Configuration Socket.IO
-const io = new Server(httpServer, { // Utilise httpServer au lieu de server
-  cors: corsoptions
-});
-
-
 
 dotenv.config();
 
-/**MIDDLEWARE GLOBAL */
+const server = express();
+const httpServer = createServer(server);
+
+const corsOptions = { origin: "*", methods: ["GET", "POST", "PUT", "DELETE"] };
+server.use(cors(corsOptions));
 server.use(express.json());
 server.use(express.urlencoded({ extended: true }));
-server.use(cors(corsoptions));
-server.use('/api/uploads', express.static(path.resolve('public/uploads')));
+server.use("/api/uploads", express.static(path.resolve("public/uploads")));
 
-// Socket.IO connection handler
-io.on('connection', (socket) => {
-  console.log('Un utilisateur est connecté');
+// --- Socket.IO ---
+const io = new Server(httpServer, { cors: corsOptions });
 
-  socket.on('authenticate', (token) => {
+// Connexion socket
+io.on("connection", (socket) => {
+  console.log("Un utilisateur est connecté");
+
+  socket.on("authenticate", (token) => {
     try {
       const decoded = verifyToken(token);
-      socket.join(`user_${decoded.id}`);
+      socket.join(`user_${decoded.id}`); // chaque utilisateur a sa room
       console.log(`Utilisateur ${decoded.id} authentifié`);
     } catch {
       socket.disconnect();
-      console.log('Authentification échouée');
+      console.log("Authentification échouée");
     }
   });
 
-  socket.on('join_user_room', (room) => {
-    socket.join(room);
-    console.log(`Socket ${socket.id} a rejoint la room ${room}`);
+  socket.on("privateMessage", (msg) => {
+    // Émettre le message à la room du destinataire
+    const receiverRoom = `user_${msg.receiver}`;
+    io.to(receiverRoom).emit("privateMessage", msg);
+    // Émettre aussi au sender pour l'affichage immédiat
+    const senderRoom = `user_${msg.sender}`;
+    io.to(senderRoom).emit("privateMessage", msg);
   });
 
-  socket.on('leave_user_room', (room) => {
-    socket.leave(room);
-    console.log(`Socket ${socket.id} a quitté la room ${room}`);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('Utilisateur déconnecté');
-  });
+  socket.on("disconnect", () => console.log("Utilisateur déconnecté"));
 });
 
-
-
-// Gestion des connexions WebSocket pour les serveurs
-
-
-
-// Rend io accessible dans les contrôleurs
 server.locals.io = io;
 
-/** ROUTES API*/
+// --- Routes ---
+server.use("/api/users", UserRouter);
+server.use("/api", authRouter);
+server.use("/api/files", fileRoute);
+server.use("/api/messages", Messagerouter);
 
-server.use("/api/users",UserRouter),
-server.use("/api",authRouter)
-server.use("/api/files", fileRoute)
-server.use("/api/messages",Messagerouter)
-
-
-// Démarrage du serveur
-server.listen(process.env.PORT, () => {
-  console.log(`Server is running on port ${process.env.PORT}`); 
-  console.log(`WebSocket disponible sur ws://localhost:${process.env.PORT}`);
+// --- Start server ---
+httpServer.listen(process.env.PORT, () => {
+  console.log(`Server running on port ${process.env.PORT}`);
 });
-
-export default io; // Exportez l'instance de Socket.IO pour l'utiliser dans d'autres fichiers
