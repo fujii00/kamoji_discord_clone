@@ -92,6 +92,11 @@ const UserModel = sequelize.define('UserModel',{
         type: DataTypes.DATE,
         allowNull:false
     },
+     theme_color: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: "#000000ff" // blanc par défaut
+    },
      url: {
             type: DataTypes.VIRTUAL,
             get(){

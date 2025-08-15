@@ -15,7 +15,7 @@ dotenv.config();
 const server = express();
 const httpServer = createServer(server);
 
-const corsOptions = { origin: "*", methods: ["GET", "POST", "PUT", "DELETE"] };
+const corsOptions = { origin: "*", methods: ["GET", "POST", "PUT", "DELETE","PATCH"] };
 server.use(cors(corsOptions));
 server.use(express.json());
 server.use(express.urlencoded({ extended: true }));
