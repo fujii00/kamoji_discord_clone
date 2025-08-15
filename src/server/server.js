@@ -9,6 +9,8 @@ import authRouter from "../routes/authRoute.js";
 import fileRoute from "../routes/FileRoute.js";
 import Messagerouter from "../routes/MessageRoute.js";
 import { verifyToken } from "../useful/jwt.js";
+import ServerRouter from "../routes/ServerRoute.js";
+import Channelrouter from "../routes/ChannelRoute.js";
 
 dotenv.config();
 
@@ -58,6 +60,8 @@ server.use("/api/users", UserRouter);
 server.use("/api", authRouter);
 server.use("/api/files", fileRoute);
 server.use("/api/messages", Messagerouter);
+server.use("/api/servers", ServerRouter);
+server.use("/api/channels",Channelrouter)
 
 // --- Start server ---
 httpServer.listen(process.env.PORT, () => {
