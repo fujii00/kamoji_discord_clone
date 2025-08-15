@@ -38,7 +38,7 @@ io.on("connection", (socket) => {
       console.log("Authentification échouée");
     }
   });
-
+ 
   socket.on("privateMessage", (msg) => {
     // Émettre le message à la room du destinataire
     const receiverRoom = `user_${msg.receiver}`;
