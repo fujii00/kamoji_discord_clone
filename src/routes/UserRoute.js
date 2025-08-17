@@ -30,7 +30,7 @@ UserRouter.get("/", getUsers)
 UserRouter.get("/All",getAllUsers)
 UserRouter.get("/all", getUsersWithPassword)
 
-UserRouter.get("/me", isGrantedAccess([ROLES.USER]), getCurrentUser)
+UserRouter.get("/me", isGrantedAccess([ROLES.USER,ROLES.ADMIN]), getCurrentUser)
 
 UserRouter.get("/:id", parseIdParam, getPeopleUser)
 
