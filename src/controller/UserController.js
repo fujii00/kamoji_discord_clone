@@ -86,20 +86,60 @@ export async function postUser(req, res) {
 
 
 
+
+
 export async function patchUser(req, res) {
-    try {
-         const id = req.params.id;
-        
-        const user = await UserModel.findByPk(id);
-        if (!user)
-         res.status(404).json({ message: "User not found" });
-        
-    await user.update(req.body);
-        res.status(200).json(user);
-    } catch (error) {
-         res.status(500).json({ message: error.message });
+  try {
+    const id = req.params.id;
+
+    let user = await UserModel.findByPk(id, {
+      include: [{ model: FileModel, as: 'file' }]
+    });
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Champs autorisés
+    const allowedFields = ['DisplayName', 'bio', 'activity_box'];
+    const updates = {};
+    for (let key of allowedFields) {
+      if (req.body[key] !== undefined) updates[key] = req.body[key];
     }
+
+    // Avatar
+    if (req.file) {
+      const file = await FileModel.create({
+        filename: req.file.filename,
+        size: req.file.size,
+        path: '/uploads', // ajouter le path
+        userId: id
+      });
+      updates.avatar = file.id;
+    }
+
+    // Mettre à jour l'utilisateur
+    await user.update(updates);
+
+    // Recharger avec avatar
+    user = await UserModel.findByPk(id, {
+      include: [{ model: FileModel, as: 'file' }]
+    });
+
+    // Retourner JSON avec URL avatar directement depuis FileModel
+    const userData = {
+      ...user.toJSON(),
+      url: user.file ? user.file.url : null
+    };
+
+    return res.status(200).json(userData);
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: err.message || 'Server error' });
+  }
 }
+
+
+
 
 export async function deleteUser (req, res) {
   try {

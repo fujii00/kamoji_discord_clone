@@ -9,13 +9,14 @@ import authRouter from "../routes/authRoute.js";
 import fileRoute from "../routes/FileRoute.js";
 import Messagerouter from "../routes/MessageRoute.js";
 import { verifyToken } from "../useful/jwt.js";
+import ServerRouter from "../routes/ServerRoute.js";
 
 dotenv.config();
 
 const server = express();
 const httpServer = createServer(server);
 
-const corsOptions = { origin: "*", methods: ["GET", "POST", "PUT", "DELETE"] };
+const corsOptions = { origin: "*", methods: ["GET", "POST", "PUT", "DELETE","PATCH"] };
 server.use(cors(corsOptions));
 server.use(express.json());
 server.use(express.urlencoded({ extended: true }));
@@ -58,6 +59,8 @@ server.use("/api/users", UserRouter);
 server.use("/api", authRouter);
 server.use("/api/files", fileRoute);
 server.use("/api/messages", Messagerouter);
+server.use("/api/servers", ServerRouter);
+
 
 // --- Start server ---
 httpServer.listen(process.env.PORT, () => {

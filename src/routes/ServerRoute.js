@@ -7,7 +7,7 @@ import { deleteServers, getServer, getServers, patchServers, postServers } from 
 
 const ServerRouter= express.Router();
 
-ServerRouter.get('/',isGrantedAccess([ROLES.USER]),getServers);
+ServerRouter.get('/',isGrantedAccess([ROLES.USER,ROLES.ADMIN]),getServers);
 
 ServerRouter.get('/:id',parseIdParam,getServer);
 

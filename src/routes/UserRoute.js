@@ -21,6 +21,7 @@ import {
     userDefaultSchema,
     validatedCodeSchema
 } from "../schema/userSchema.js";
+import upload from "../middleware/upload.js";
 
 
 const UserRouter= express.Router();
@@ -29,7 +30,7 @@ UserRouter.get("/", getUsers)
 UserRouter.get("/All",getAllUsers)
 UserRouter.get("/all", getUsersWithPassword)
 
-UserRouter.get("/me", isGrantedAccess([ROLES.USER]), getCurrentUser)
+UserRouter.get("/me", isGrantedAccess([ROLES.USER,ROLES.ADMIN]), getCurrentUser)
 
 UserRouter.get("/:id", parseIdParam, getPeopleUser)
 
@@ -38,7 +39,7 @@ UserRouter.post("/forgot_password", validate(sendCodeResetSchema), resetPassword
 UserRouter.post('/check_code', checkCode)
 UserRouter.post("/reset_password", validate(resetPasswordSchema()), confirmResetPassword)
 UserRouter.post("/check_email", isGrantedAccess([ROLES.USER]), validate(validatedCodeSchema()), checkEmail)
-UserRouter.patch("/:id", patchUser)
+UserRouter.patch("/:id", upload.single("avatar") ,patchUser)
 UserRouter.delete("/:id", deleteUser)
 
 export default UserRouter;
